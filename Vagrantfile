@@ -16,7 +16,7 @@ Vagrant.configure("2") do |config|
       vm_config['networks'].each do |network|
 
         if network['type'] == "internal"
-          vmobj.vm.network "private_network", virtualbox__intnet: network['name'], ip: network['ip'], netmask: network['netmask'] ? network['netmask'] : "255.255.255.0", gateway: network['gateway']
+          vmobj.vm.network "private_network", virtualbox__intnet: network['name'], ip: network['ip'], netmask: network['netmask'] ? network['netmask'] : "255.255.255.0"
         elsif network['type'] == "nat"
           vmobj.vm.network "public_network", auto_config: network['auto_config']
         end
