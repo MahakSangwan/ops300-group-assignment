@@ -1,0 +1,3 @@
+config:
+  domain: "local.net"
+  box: "ubuntu/jammy64"

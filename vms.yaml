@@ -1,0 +1,7 @@
+client:
+  networks:
+    - type: "internal"
+      name: "private_network"
+      ip: "192.168.15.10"
+    - type: "nat"
+      auto_config: true
