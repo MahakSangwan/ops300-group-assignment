@@ -2,45 +2,57 @@ client-1:
   networks:
     - type: "internal"
       name: "private_network"
+      ip: "192.168.1.10"
 client-2:
   networks:
     - type: "internal"
       name: "private_network"
+      ip: "192.168.1.11"
 client-router:
   networks:
     - type: "internal"
       name: "private_network"
+      ip: "192.168.1.1"
     - type: "internal"
       name: "simulated_internet"
+      ip: "10.10.10.1"
     - type: "nat"
       auto_config: true
 company-router-public:
   networks:
     - type: "internal"
       name: "company_network_public"
+      ip: "172.17.1.1"
     - type: "internal"
       name: "simulated_internet"
+      ip: "10.10.10.2"
     - type: "nat"
       auto_config: true
 agent-node-1:
   networks:
     - type: "internal"
       name: "company_network_public"
+      ip: "172.17.1.10"
 agent-node-2:
   networks:
     - type: "internal"
       name: "company_network_public"
+      ip: "172.17.1.11"
 company-router-private:
   networks:
     - type: "internal"
       name: "company_network_public"
+      ip: "172.17.1.2"
     - type: "internal"
       name: "company_network_private"
+      ip: "172.17.2.1"
 control-node-k8s:
   networks:
     - type: "internal"
       name: "company_network_private"
+      ip: "172.17.2.10"
 control-node-ansible:
   networks:
     - type: "internal"
       name: "company_network_private"
+      ip: "172.17.2.11"
