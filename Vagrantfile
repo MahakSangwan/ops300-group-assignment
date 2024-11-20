@@ -1,4 +1,5 @@
 require 'yaml'
+require_relative 'ansible_config'
 
 Vagrant.configure("2") do |config|
 
@@ -26,5 +27,7 @@ Vagrant.configure("2") do |config|
     end
   
   end
+
+  anisble_provision(config)
 
 end

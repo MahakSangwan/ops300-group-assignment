@@ -1,0 +1,26 @@
+---
+- name: Test Ansible Setup - Gather Facts and Run Command
+  hosts: all
+  become: yes
+  gather_facts: true  # Enable fact gathering to collect system information
+  tasks:
+
+    - name: "Print gathered facts (example: hostname)"
+      debug:
+        msg: "The hostname of the machine is {{ ansible_hostname }}"
+
+    - name: Run a simple command (uptime)
+      command: uptime
+      register: uptime_output
+
+    - name: Print the output of the uptime command
+      debug:
+        msg: "Uptime output: {{ uptime_output.stdout }}"
+
+    - name: Print all groups and their members
+      debug:
+        msg: >
+          {%- for group in groups.keys() %}
+          Group: {{ group }}
+          Members: {{ groups[group] }}
+          {%- endfor %}
