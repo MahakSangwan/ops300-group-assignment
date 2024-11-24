@@ -3,11 +3,13 @@ client-1:
     - type: "internal"
       name: "private_network"
       ip: "192.168.1.10"
+  gateway: "192.168.1.1"
 client-2:
   networks:
     - type: "internal"
       name: "private_network"
       ip: "192.168.1.11"
+  gateway: "192.168.1.1"
 client-router:
   networks:
     - type: "internal"
@@ -33,11 +35,13 @@ agent-node-1:
     - type: "internal"
       name: "company_network_public"
       ip: "172.17.1.10"
+  gateway: "172.17.1.1"
 agent-node-2:
   networks:
     - type: "internal"
       name: "company_network_public"
       ip: "172.17.1.11"
+  gateway: "172.17.1.1"
 company-router-private:
   networks:
     - type: "internal"
@@ -46,13 +50,16 @@ company-router-private:
     - type: "internal"
       name: "company_network_private"
       ip: "172.17.2.1"
+  gateway: "172.17.1.1"
 control-node-k8s:
   networks:
     - type: "internal"
       name: "company_network_private"
       ip: "172.17.2.10"
+  gateway: "172.17.2.1"
 control-node-ansible:
   networks:
     - type: "internal"
       name: "company_network_private"
       ip: "172.17.2.11"
+  gateway: "172.17.2.1"

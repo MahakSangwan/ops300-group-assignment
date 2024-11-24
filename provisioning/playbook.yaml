@@ -1,26 +1,108 @@
 ---
-- name: Test Ansible Setup - Gather Facts and Run Command
+- name: "Configuring networks"
   hosts: all
   become: yes
-  gather_facts: true  # Enable fact gathering to collect system information
+  vars_files:
+    - "/vagrant/vms.yaml"
   tasks:
+    - name: "Removing vagrant default Gateway"
+      copy:
+        src: "/vagrant/provisioning/templates/netplan/51-remove-vagrant-route.yaml"
+        dest: "/etc/netplan/51-remove-vagrant-route.yaml"
+        owner: "root"
+        group: "root"
+        mode: "0600"
+      notify:
+        - "netplan_apply"
 
-    - name: "Print gathered facts (example: hostname)"
-      debug:
-        msg: "The hostname of the machine is {{ ansible_hostname }}"
+    - name: "Retriving new Gateway IP"
+      set_fact:
+        gateway_ip: "{{ lookup('vars', ansible_hostname).gateway }}"
+      when: lookup('vars', ansible_hostname).gateway is defined
 
-    - name: Run a simple command (uptime)
-      command: uptime
-      register: uptime_output
+    - name: "Copying the new netplan file"
+      template:
+        src: "/vagrant/provisioning/templates/netplan/51-ansible.j2"
+        dest: "/etc/netplan/51-ansible.yaml"
+        owner: "root"
+        group: "root"
+        mode: "0600"
+      when: gateway_ip is defined
+      notify:
+        - "netplan_apply"
 
-    - name: Print the output of the uptime command
-      debug:
-        msg: "Uptime output: {{ uptime_output.stdout }}"
+  handlers:
+    - name: "netplan_apply"
+      command: "netplan apply"
 
-    - name: Print all groups and their members
-      debug:
-        msg: >
-          {%- for group in groups.keys() %}
-          Group: {{ group }}
-          Members: {{ groups[group] }}
-          {%- endfor %}
+- name: "Configuring Gateways"
+  hosts: gateways
+  become: yes
+  tasks:
+    - name: "Enabling IP forwarding in sysctl.conf"
+      lineinfile:
+        path: /etc/sysctl.conf
+        regexp: '^#?net.ipv4.ip_forward'
+        line: 'net.ipv4.ip_forward = 1'
+        state: present
+      notify:
+        - "apply_changes"
+
+  handlers:
+    - name: "apply_changes"
+      command: "sysctl -p"
+
+- name: "Configuring NAT"
+  hosts: simulated_internet
+  become: yes
+  tasks:
+    - name: "Installing nftables"
+      package:
+        name: "nftables"
+        state: latest
+
+    - name: "Enabling nftables"
+      service:
+        name: "nftables"
+        enabled: yes
+        state: started
+
+    - name: "Adding NAT rules to nftables.conf"
+      blockinfile:
+        path: /etc/nftables.conf
+        marker: "# {mark} ANSIBLE NAT CONFIGURATION"
+        block: |
+          table ip nat {
+              chain postrouting {
+                  type nat hook postrouting priority 100; policy accept;
+                  oif "enp0s10" masquerade
+              }
+          }
+      notify:
+        - "restart_nftables"
+
+  handlers:
+    - name: "restart_nftables"
+      systemd:
+        name: nftables
+        state: restarted
+
+- name: "Adding internal routes to Company edge gateway"
+  hosts: company_public_network_gateway
+  become: yes
+  vars_files:
+    - "/vagrant/vms.yaml"
+  tasks:
+    - name: "Copying netplan configuration file"
+      template:
+        src: "/vagrant/provisioning/templates/netplan/51-route-to-internal.j2"
+        dest: "/etc/netplan/51-route-to-internal.yaml"
+        owner: "root"
+        group: "root"
+        mode: "0600"
+      notify:
+        - "netplan_apply"
+
+  handlers:
+    - name: "netplan_apply"
+      command: "netplan apply"

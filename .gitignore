@@ -3,3 +3,6 @@
 
 # ignore .vagrant folder
 /.vagrant/
+
+# ignore ide files
+/.vscode/
