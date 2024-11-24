@@ -13,8 +13,10 @@ def anisble_provision(config)
             
             "private_network:children" => ["private_network_clients", "private_network_gateway"],
             "simulated_internet:children" => ["private_network_gateway", "company_public_network_gateway"],
-            "company_public_network:children" => ["company_public_network_nodes", "company_public_network_gateway", "company_private_network_gateway"],
-            "company_private_network:children" => ["company_private_network_nodes", "company_private_network_gateway"]
+            "company_public_network:children" => ["company_public_network_nodes", "e222222222222", "company_private_network_gateway"],
+            "company_private_network:children" => ["company_private_network_nodes", "company_private_network_gateway"],
+            "clients:children" => ["private_network_clients", "company_public_network_nodes", "company_private_network_nodes"],
+            "gateways:children" => ["private_network_gateway", "company_public_network_gateway", "company_private_network_gateway"]
         }
     end
 end

@@ -1,0 +1,10 @@
+---
+network:
+  version: 2
+  renderer: networkd
+  ethernets:
+    enp0s3:
+      dhcp6-overrides:
+        use-routes: false
+      dhcp4-overrides:
+        use-routes: false
