@@ -1,0 +1,1 @@
+kubeadm join 172.17.2.10:6443 --token 2qnnbb.et3l7nwdomfi34hd --discovery-token-ca-cert-hash sha256:4f551bebd786fd7b7d60ef852da5b3cb480cdf7814012b485c7a9a7a77252cec 

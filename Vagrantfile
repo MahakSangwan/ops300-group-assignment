@@ -14,6 +14,11 @@ Vagrant.configure("2") do |config|
       vmobj.vm.box = vm_config.key?('box') ? vm_config['box'] : global_config['box']      
       vmobj.vm.hostname = name
 
+      vmobj.vm.provider "virtualbox" do |v|
+        # v.gui = true
+        v.memory = vm_config.key?('ram') ? vm_config['ram'] : global_config['ram']
+      end
+
       vm_config['networks'].each do |network|
 
         if network['type'] == "internal"

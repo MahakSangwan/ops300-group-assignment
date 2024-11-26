@@ -83,7 +83,7 @@
 
   handlers:
     - name: "restart_nftables"
-      systemd:
+      service:
         name: nftables
         state: restarted
 
@@ -106,3 +106,236 @@
   handlers:
     - name: "netplan_apply"
       command: "netplan apply"
+
+# - name: "Installing docker for k8s cluster"
+#   hosts: "k8s-members"
+#   become: yes
+#   tasks:
+#   - name: "Installing docker"
+#     apt: 
+#       name: "docker.io"
+#       state: latest
+#       update_cache: yes
+#     notify:
+#       - "enable_docker"
+
+#   - name: "Add user to docker group"
+#     user:
+#       name: vagrant
+#       group: docker
+
+#   handlers:
+#     - name: "enable_docker"
+#       service:
+#         name: docker
+#         state: started
+#         enabled: yes
+
+- name: "Installing k8s packages and requirements"
+  hosts: "k8s-members"
+  become: yes
+  tasks:
+
+    - name: Disable SWAP
+      shell: |
+        swapoff -a
+
+    - name: Disable SWAP in fstab
+      replace:
+        path: /etc/fstab
+        regexp: '^([^#].*?\sswap\s+sw\s+.*)$'
+        replace: '# \1'
+
+    - name: Configure modules for containerd
+      blockinfile:
+        path: /etc/modules-load.d/containerd.conf
+        create: yes
+        block: |
+          overlay
+          br_netfilter
+
+    - name: Configure sysctl parameters for K8S
+      lineinfile:
+        path: /etc/sysctl.d/kubernetes.conf
+        create: yes
+        line: "{{ item }}"
+      with_items:
+        - "net.bridge.bridge-nf-call-iptables  = 1"
+        - "net.ipv4.ip_forward = 1"
+        - "net.bridge.bridge-nf-call-ip6tables = 1"
+
+    - name: Apply sysctl parameters
+      command: sysctl --system
+
+    - name: Install APT Transport HTTPS
+      apt:
+        name: apt-transport-https
+        state: present
+
+    - name: Add Kubernetes apt-key
+      get_url:
+        url: https://pkgs.k8s.io/core:/stable:/v1.29/deb/Release.key
+        dest: /etc/apt/keyrings/kubernetes-apt-keyring.asc
+        mode: "0644"
+        force: true
+
+    - name: Add Kubernetes APT repository
+      apt_repository:
+        repo: "deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.asc] https://pkgs.k8s.io/core:/stable:/v1.29/deb/ /"
+        state: present
+        update_cache: yes
+
+    - name: Install containerd
+      apt:
+        name: docker.io
+        state: latest
+
+    - name: Create containerd directory
+      file:
+        path: /etc/containerd
+        state: directory
+
+    - name: Add containerd configuration
+      shell: /usr/bin/containerd config default > /etc/containerd/config.toml
+
+    - name: Configuring Systemd cgroup driver for containerd
+      lineinfile:
+        path: /etc/containerd/config.toml
+        regexp: "            SystemdCgroup = false"
+        line: "            SystemdCgroup = true"
+
+    - name: Enable the containerd service and start service
+      systemd:
+        name: containerd
+        state: restarted
+        enabled: yes
+        daemon-reload: yes
+
+    - name: Install Kubelet
+      apt:
+        name: kubelet
+        state: latest
+        update_cache: true
+
+    - name: Install Kubeadm
+      apt:
+        name: kubeadm
+        state: latest
+
+    - name: Install Kubectl
+      apt:
+        name: kubectl
+        state: latest
+        force: yes
+
+    - name: Enable the Kubelet service
+      service:
+        name: kubelet
+        enabled: yes
+
+    - name: Load br_netfilter kernel module
+      modprobe:
+        name: br_netfilter
+        state: present
+
+    - name: Set bridge-nf-call-iptables
+      sysctl:
+        name: net.bridge.bridge-nf-call-iptables
+        value: 1
+
+    - name: Set ip_forward
+      sysctl:
+        name: net.ipv4.ip_forward
+        value: 1
+
+# - name: "Initializing the master node"
+#   hosts: "control-node-k8s"
+#   become: yes
+#   tasks:
+#   - name: "Initializing using kubeadm"
+#     command: "kubeadm init --pod-network-cidr=192.168.0.0/16"
+  
+#   - name: "Setup kubeconfig for vagrant user"
+#     command: "{{ item }}"
+#     loop:
+#       - "mkdir -p /home/vagrant/.kube"
+#       - "cp -i /etc/kubernetes/admin.conf /home/vagrant/.kube/config"
+#       - "chown vagrant:vagrant /home/vagrant/.kube/config"
+
+#   - name: "Setup Flannel Container Network Interface"
+#     command: "kubectl apply -f https://github.com/flannel-io/flannel/releases/latest/download/kube-flannel.yml"
+
+- name: "Configuring k8s control-plane"
+  hosts: control-node-k8s
+  become: yes
+  tasks:
+
+  - name: Configure container runtime
+    blockinfile:
+      path: /etc/kubernetes/kubeadm-config.yaml
+      create: yes
+      block: |
+        kind: ClusterConfiguration
+        apiVersion: kubeadm.k8s.io/v1beta3
+        networking:
+          podSubnet: "10.244.0.0/16"
+        ---
+        kind: KubeletConfiguration
+        apiVersion: kubelet.config.k8s.io/v1beta1
+        runtimeRequestTimeout: "15m"
+        cgroupDriver: "systemd"
+        systemReserved:
+          cpu: 100m
+          memory: 350M
+        kubeReserved:
+          cpu: 100m
+          memory: 50M
+        enforceNodeAllocatable:
+        - pods
+
+  # - name: Enable the containerd service and start service
+  #   systemd:
+  #     name: containerd
+  #     state: restarted
+  #     enabled: yes
+  #     daemon-reload: yes
+
+  - name: Initialize the cluster
+    shell: kubeadm init --config /etc/kubernetes/kubeadm-config.yaml
+
+  - name: Create .kube directory
+    become: yes
+    become_user: vagrant
+    file:
+      path: $HOME/.kube
+      state: directory
+      mode: 0755
+
+  - name: Copy admin.conf to User's kube config
+    copy:
+      src: /etc/kubernetes/admin.conf
+      dest: /home/vagrant/.kube/config
+      remote_src: yes
+      owner: vagrant
+      group: vagrant
+
+  - name: Install Pod Network
+    become: yes
+    become_user: vagrant
+    shell: kubectl apply -f https://raw.githubusercontent.com/flannel-io/flannel/master/Documentation/kube-flannel.yml
+
+  - name: "Get the join command from worker nodes"
+    command: "kubeadm token create --print-join-command"
+    register: join_command
+  
+  - name: "Copy command output to shared filder"
+    copy:
+      content: "{{ join_command.stdout }}"
+      dest: "/vagrant/join_command.sh"
+
+- name: "Initializing the worker nodes"
+  hosts: "k8s-workers"
+  become: yes
+  tasks:
+  - name: "Joining the worker nodes to the cluster"
+    command: "sh /vagrant/join_command.sh"

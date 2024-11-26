@@ -30,18 +30,6 @@ company-router-public:
       ip: "10.10.10.2"
     - type: "nat"
       auto_config: true
-agent-node-1:
-  networks:
-    - type: "internal"
-      name: "company_network_public"
-      ip: "172.17.1.10"
-  gateway: "172.17.1.1"
-agent-node-2:
-  networks:
-    - type: "internal"
-      name: "company_network_public"
-      ip: "172.17.1.11"
-  gateway: "172.17.1.1"
 company-router-private:
   networks:
     - type: "internal"
@@ -52,14 +40,29 @@ company-router-private:
       ip: "172.17.2.1"
   gateway: "172.17.1.1"
 control-node-k8s:
+  ram: 2048
   networks:
     - type: "internal"
       name: "company_network_private"
       ip: "172.17.2.10"
   gateway: "172.17.2.1"
-control-node-ansible:
+agent-node-1:
+  ram: 2048
   networks:
     - type: "internal"
-      name: "company_network_private"
-      ip: "172.17.2.11"
-  gateway: "172.17.2.1"
+      name: "company_network_public"
+      ip: "172.17.1.10"
+  gateway: "172.17.1.1"
+agent-node-2:
+  ram: 2048
+  networks:
+    - type: "internal"
+      name: "company_network_public"
+      ip: "172.17.1.11"
+  gateway: "172.17.1.1"
+# control-node-ansible:
+#   networks:
+#     - type: "internal"
+#       name: "company_network_private"
+#       ip: "172.17.2.11"
+#   gateway: "172.17.2.1"
