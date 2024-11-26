@@ -1,3 +1,4 @@
 config:
   domain: "local.net"
   box: "ubuntu/jammy64"
+  ram: 512
